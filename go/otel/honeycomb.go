@@ -7,27 +7,30 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpgrpc"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/semconv"
 )
 
 func RegisterTracer() {
 	ctx := context.Background()
 
 	// Create an OTLP exporter, passing in Honeycomb credentials as environment variables.
-	exp, err := otlp.NewExporter(
+	exp, err := otlptrace.New(
 		ctx,
+		otlptracegrpc.NewClient(
+			otlptracegrpc.WithEndpoint("api.honeycomb.io:443"),
+			otlptracegrpc.WithHeaders(map[string]string{
 		otlpgrpc.NewDriver(
 			otlpgrpc.WithEndpoint("api.honeycomb.io:443"),
 			otlpgrpc.WithHeaders(map[string]string{
 				"x-honeycomb-team":    "x",
 				"x-honeycomb-dataset": "x",
 			}),
-			otlpgrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, "")),
+			otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, "")),
 		),
 	)
 
@@ -41,7 +44,7 @@ func RegisterTracer() {
 		sdktrace.WithSpanProcessor(
 			sdktrace.NewBatchSpanProcessor(exp),
 		),
-		sdktrace.WithResource(resource.NewWithAttributes(semconv.ServiceNameKey.String("test-go-otel"))),
+		sdktrace.WithResource(resource.NewSchemaless(attribute.String("service.name", "test-go-otel"))),
 	)
 
 	// // Handle this error in a sensible manner where possible
