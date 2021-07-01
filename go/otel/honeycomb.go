@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -24,9 +25,6 @@ func RegisterTracer() {
 		otlptracegrpc.NewClient(
 			otlptracegrpc.WithEndpoint("api.honeycomb.io:443"),
 			otlptracegrpc.WithHeaders(map[string]string{
-		otlpgrpc.NewDriver(
-			otlpgrpc.WithEndpoint("api.honeycomb.io:443"),
-			otlpgrpc.WithHeaders(map[string]string{
 				"x-honeycomb-team":    "x",
 				"x-honeycomb-dataset": "x",
 			}),
@@ -38,11 +36,19 @@ func RegisterTracer() {
 		log.Fatalf("failed to initialize exporter: %v", err)
 	}
 
+	cexp, err := stdouttrace.New(stdouttrace.WithPrettyPrint())
+	if err != nil {
+		log.Fatalf("failed to initialize exporter: %v", err)
+	}
+
 	// Create a new tracer provider with a batch span processor and the otlp exporter.
 	// Add a resource attribute service.name that identifies the service in the Honeycomb UI.
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithSpanProcessor(
 			sdktrace.NewBatchSpanProcessor(exp),
+		),
+		sdktrace.WithSpanProcessor(
+			sdktrace.NewBatchSpanProcessor(cexp),
 		),
 		sdktrace.WithResource(resource.NewSchemaless(attribute.String("service.name", "test-go-otel"))),
 	)

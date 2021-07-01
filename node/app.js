@@ -4,7 +4,7 @@ const grpc = require('@grpc/grpc-js');
 const { registerInstrumentations } = require('@opentelemetry/instrumentation');
 const { NodeTracerProvider } = require('@opentelemetry/node')
 const { HttpInstrumentation } = require('@opentelemetry/instrumentation-http');
-const { SimpleSpanProcessor } = require('@opentelemetry/tracing');
+const { ConsoleSpanExporter, BatchSpanProcessor } = require('@opentelemetry/tracing');
 const { CollectorTraceExporter } = require('@opentelemetry/exporter-collector-grpc');
 
 
@@ -19,7 +19,8 @@ const exporter = new CollectorTraceExporter({
     credentials: grpc.credentials.createSsl(),
     metadata,
 });
-provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
+provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+provider.addSpanProcessor(new BatchSpanProcessor(new ConsoleSpanExporter()));
 provider.register();
 
 registerInstrumentations({
@@ -43,9 +44,9 @@ app.get('/', function (req, res) {
     greeting.setFirstname('ricardo');
     greeting.setLastname('linck');
     greetingRequest.setGreeting(greeting);
-    client.greet(greetingRequest, function(err, response) {
+    client.greet(greetingRequest, function (err, response) {
         console.log('Greeting:', response.getResult());
-      });
+    });
     res.send('Hello World!');
 });
 
